@@ -60,18 +60,11 @@ RUN --mount=type=cache,target=/build/.yarn/cache --mount=type=cache,target=/buil
 
 FROM node:24-slim
 
-ARG user=joplin
-RUN useradd --create-home --shell /bin/bash $user
+# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#non-root-user
+USER node
 
-# Install PM2 and set home directory. Setting the PM2 data dir so modules/config persist regardless
-# of user home.
-RUN npm i -g pm2@5.4.3 && mkdir -p /opt/pm2 && chown -R $user:$user /opt/pm2
-ENV PM2_HOME=/opt/pm2
-
-USER $user
-
-COPY --chown=$user:$user --from=builder /build/packages /home/$user/packages
-COPY --chown=$user:$user --from=builder /usr/bin/tini /usr/local/bin/tini
+COPY --chown=node:node --from=builder /build/packages /app
+COPY --chown=node:node --from=builder /usr/bin/tini /usr/local/bin/tini
 
 # We download a specific version of the plugin to prevent pm2 from fetching the latest, since it may
 # not have been properly audited (that fact was used to spread malware at some point). Ref:
@@ -87,7 +80,7 @@ EXPOSE ${APP_PORT}
 
 # Use Tini to start Joplin Server:
 # https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#handling-kernel-signals
-WORKDIR /home/$user/packages/server
+WORKDIR /app/server
 ENTRYPOINT ["tini", "--"]
 CMD ["yarn", "start-prod"]
 
