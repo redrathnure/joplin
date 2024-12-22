@@ -58,13 +58,11 @@ RUN BUILD_SEQUENCIAL=1 yarn install --inline-builds \
 
 FROM node:18-bullseye-slim
 
-ARG user=joplin
-RUN useradd --create-home --shell /bin/bash $user
+# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#non-root-user
+USER node
 
-USER $user
-
-COPY --chown=$user:$user --from=builder /build/packages /home/$user/packages
-COPY --chown=$user:$user --from=builder /usr/bin/tini /usr/local/bin/tini
+COPY --chown=node:node --from=builder /build/packages /app
+COPY --chown=node:node --from=builder /usr/bin/tini /usr/local/bin/tini
 
 ENV NODE_ENV=production
 ENV RUNNING_IN_DOCKER=1
@@ -72,7 +70,7 @@ EXPOSE ${APP_PORT}
 
 # Use Tini to start Joplin Server:
 # https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#handling-kernel-signals
-WORKDIR /home/$user/packages/server
+WORKDIR /app/server
 ENTRYPOINT ["tini", "--"]
 CMD ["yarn", "start-prod"]
 
