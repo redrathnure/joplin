@@ -47,9 +47,9 @@ RUN sed --in-place '/onenote-converter/d' ./packages/lib/package.json
 # Note that `yarn install` ignores `NODE_ENV=production` and will install dev
 # dependencies too, but this is fine because we need them to build the app.
 
-RUN BUILD_SEQUENCIAL=1 yarn install --inline-builds \
-    && yarn cache clean \
-    && rm -rf .yarn/berry
+RUN --mount=type=cache,target=/build/.yarn/cache --mount=type=cache,target=/build/.yarn/berry/cache\
+    BUILD_SEQUENCIAL=1 yarn config set cacheFolder /build/.yarn/cache \
+    && yarn install --inline-builds
 
 # =============================================================================
 # Final stage - we copy only the relevant files from the build stage and start
