@@ -24,13 +24,13 @@ export function getIsPreRelease(_tagName: string): boolean {
 
 async function main() {
 	const argv = require('yargs').argv as Argv;
-	if (!argv.tagName) throw new Error('--tag-name not provided');
+	if (!argv.tagName) console.info('No `--tag-name` was specified. A latest git tag will be used instead.');
 	if (!argv.repository) throw new Error('--repository not provided');
 
 	const dryRun = !!argv.dryRun;
 	const pushImages = !!argv.pushImages;
 	const repository = argv.repository;
-	const tagName = argv.tagName;
+	const tagName = argv.tagName || `server-${await execCommand('git describe --tags --match v*', { showStdout: false })}`;
 	const isPreRelease = getIsPreRelease(tagName);
 	const imageVersion = getVersionFromTag(tagName, isPreRelease);
 	const buildDate = moment(new Date().getTime()).format('YYYY-MM-DDTHH:mm:ssZ');
