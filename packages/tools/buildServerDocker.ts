@@ -11,8 +11,12 @@ interface Argv {
 
 export function getVersionFromTag(tagName: string, isPreRelease: boolean): string {
 	const s = tagName.split('-');
-	const suffix = isPreRelease ? '-beta' : '';
-	return s[1].substr(1) + suffix;
+	const mainVersion = s[1].replace(/^(v)/, '');
+	const metaComponents = s.slice(2).filter(item => item !== 'beta');
+
+	// Append `git describe` components for pre release images. Mostly for case without `tagName` arg
+	const suffix = isPreRelease ? `-beta${metaComponents.length > 0 ? `.${metaComponents.join('.')}` : ''}` : '';
+	return mainVersion + suffix;
 }
 
 export function getIsPreRelease(_tagName: string): boolean {
@@ -43,10 +47,15 @@ async function main() {
 	const buildArgs = `--build-arg BUILD_DATE="${buildDate}" --build-arg REVISION="${revision}" --build-arg VERSION="${imageVersion}"`;
 	const dockerTags: string[] = [];
 	const versionPart = imageVersion.split('.');
+	const patchVersionPart = versionPart[2].split('-')[0];
 	dockerTags.push(isPreRelease ? 'beta' : 'latest');
 	dockerTags.push(versionPart[0] + (isPreRelease ? '-beta' : ''));
 	dockerTags.push(`${versionPart[0]}.${versionPart[1]}${isPreRelease ? '-beta' : ''}`);
-	dockerTags.push(imageVersion);
+	dockerTags.push(`${versionPart[0]}.${versionPart[1]}.${patchVersionPart}${isPreRelease ? '-beta' : ''}`);
+	if (dockerTags.indexOf(imageVersion) < 0) {
+		dockerTags.push(imageVersion);
+	}
+
 
 	process.chdir(rootDir);
 	console.info(`Running from: ${process.cwd()}`);
