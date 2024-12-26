@@ -58,21 +58,35 @@ RUN BUILD_SEQUENCIAL=1 yarn install --inline-builds \
 
 FROM node:18-bullseye-slim
 
-# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#non-root-user
-USER node
-
+# Lazy version, https://github.com/tianon/gosu/blob/master/INSTALL.md
+COPY --from=tianon/gosu /gosu /usr/local/bin/
 COPY --chown=node:node --from=builder /build/packages /app
-COPY --chown=node:node --from=builder /usr/bin/tini /usr/local/bin/tini
+COPY --from=builder /usr/bin/tini /usr/local/bin/tini
+# Entry point to check permissions and switch to node:node user 
+COPY --chown=node:node docker/bin/docker-entrypoint.sh /
 
 ENV NODE_ENV=production
 ENV RUNNING_IN_DOCKER=1
+ENV DATA_ROOT=/data
+ENV SRV_ROOT=/app/server
+ENV PM2_HOME=$DATA_ROOT/pm2
+ENV PATH=$PATH:$SRV_ROOT/node_modules/.bin
+
 EXPOSE ${APP_PORT}
+
+RUN chmod ugo+rx,go-w /docker-entrypoint.sh \
+    && mkdir -p $PM2_HOME \
+    && chown node:node -R $DATA_ROOT \
+    # In case custom -u UID:GID arg was specified, these directory should be writable for other users
+    && chmod og+w -R $DATA_ROOT \
+    && chmod og+w $SRV_ROOT
 
 # Use Tini to start Joplin Server:
 # https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#handling-kernel-signals
-WORKDIR /app/server
-ENTRYPOINT ["tini", "--"]
-CMD ["yarn", "start-prod"]
+WORKDIR $SRV_ROOT
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["pm2-runtime", "--exp-backoff-restart-delay=1000", "dist/app.js"]
 
 # Build-time metadata
 # https://github.com/opencontainers/image-spec/blob/master/annotations.md
