@@ -38,7 +38,7 @@ services:
             - POSTGRES_USER=${POSTGRES_USER}
             - POSTGRES_DB=${POSTGRES_DATABASE}
     app:
-        image: joplin/server:latest
+        image: ghcr.io/redrathnure/joplin:latest
         profiles:
             - full
             - server

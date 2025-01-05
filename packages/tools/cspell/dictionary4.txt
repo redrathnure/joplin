@@ -386,3 +386,8 @@ assoc
 Hookmark
 unsynced
 привет
+buildx
+topagency
+PUID
+PGID
+armhf
