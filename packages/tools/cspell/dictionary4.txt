@@ -263,3 +263,6 @@ bordercolor
 togglefullscreen
 buildx
 topagency
+PUID
+PGID
+armhf
