@@ -10,6 +10,7 @@ interface Argv {
 	platform?: string;
 	source?: string;
 	addLatestTag?: boolean;
+	variant?: string;
 }
 
 function parseArgv(): Argv {
@@ -37,6 +38,11 @@ function parseArgv(): Argv {
 			describe: 'Comma separated list of target image platforms.',
 			type: 'string',
 			default: 'linux/amd64',
+		})
+		.option('variant', {
+			describe: 'Build variant. `node18`, `node20`, `node18-alpine` or `node20-alpine`',
+			type: 'string',
+			default: '',
 		})
 		.option('source', {
 			describe: 'Source Git repository for the images.',
@@ -87,6 +93,7 @@ async function main() {
 	const tagName = argv.tagName || `server-${await execCommand('git describe --tags --match v*', { showStdout: false })}`;
 	const platform = argv.platform;
 	const source = argv.source;
+	const buildVariant = argv.variant;
 
 	const isPreRelease = getIsPreRelease(tagName);
 	const imageVersion = getVersionFromTag(tagName, isPreRelease);
@@ -118,6 +125,11 @@ async function main() {
 		dockerTags.push('latest');
 	}
 
+	const tagVariant = buildVariant ? `-${buildVariant}` : '';
+	const finalDockerTags = dockerTags.map(tag => tag + tagVariant);
+
+	const dockerFileVariant = buildVariant.replace(/node18[-]?/g, '');
+	const dockerFile = dockerFileVariant === '' ? 'Dockerfile.server' : `Dockerfile-${dockerFileVariant}.server`;
 
 	process.chdir(rootDir);
 	console.info(`Running from: ${process.cwd()}`);
@@ -128,16 +140,17 @@ async function main() {
 	console.info('pushImages:', pushImages);
 	console.info('imageVersion:', imageVersion);
 	console.info('isPreRelease:', isPreRelease);
-	console.info('Docker tags:', dockerTags.join(', '));
+	console.info('Docker tags:', finalDockerTags.join(', '));
+	console.info('Docker descriptor: ', dockerFile);
 
 	const cliArgs = ['--progress=plain'];
 	cliArgs.push(`--platform ${platform}`);
-	cliArgs.push(...dockerTags.map(tag => `--tag "${repository}:${tag}"`));
+	cliArgs.push(...finalDockerTags.map(tag => `--tag "${repository}:${tag}"`));
 	cliArgs.push(...buildArgs.map(arg => `--build-arg ${arg}`));
 	if (pushImages) {
 		cliArgs.push('--push');
 	}
-	cliArgs.push('-f Dockerfile.server');
+	cliArgs.push(`-f ${dockerFile}`);
 	cliArgs.push('.');
 
 	const dockerCommand = `docker buildx build ${cliArgs.join(' ')}`;
