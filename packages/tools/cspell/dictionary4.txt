@@ -168,3 +168,6 @@ cipherdecipher
 pmmmwh
 sideloading
 buildx
+PUID
+PGID
+armhf
