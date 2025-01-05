@@ -35,6 +35,8 @@ async function main() {
 	const pushImages = !!argv.pushImages;
 	const repository = argv.repository;
 	const tagName = argv.tagName || `server-${await execCommand('git describe --tags --match v*', { showStdout: false })}`;
+	const source = 'https://github.com/laurent22/joplin.git';
+
 	const isPreRelease = getIsPreRelease(tagName);
 	const imageVersion = getVersionFromTag(tagName, isPreRelease);
 	const buildDate = moment(new Date().getTime()).format('YYYY-MM-DDTHH:mm:ssZ');
@@ -44,7 +46,7 @@ async function main() {
 	} catch (error) {
 		console.info('Could not get git commit: metadata revision field will be empty');
 	}
-	const buildArgs = `--build-arg BUILD_DATE="${buildDate}" --build-arg REVISION="${revision}" --build-arg VERSION="${imageVersion}"`;
+	const buildArgs = `--build-arg BUILD_DATE="${buildDate}" --build-arg REVISION="${revision}" --build-arg VERSION="${imageVersion}" --build-arg SOURCE="${source}"`;
 	const dockerTags: string[] = [];
 	const versionPart = imageVersion.split('.');
 	const patchVersionPart = versionPart[2].split('-')[0];
