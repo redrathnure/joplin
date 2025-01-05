@@ -367,3 +367,8 @@ twodo
 Gemma
 instr
 unsynced
+buildx
+topagency
+PUID
+PGID
+armhf
