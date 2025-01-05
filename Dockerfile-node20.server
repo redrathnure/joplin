@@ -1,0 +1,103 @@
+# =============================================================================
+# Build stage
+# =============================================================================
+
+FROM node:20 AS builder
+
+RUN apt-get update \
+    && apt-get install -y \
+    python3 tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Enables Yarn
+RUN corepack enable
+
+WORKDIR /build
+
+COPY .yarn/plugins ./.yarn/plugins
+COPY .yarn/releases ./.yarn/releases
+COPY .yarn/patches ./.yarn/patches
+COPY package.json .
+COPY .yarnrc.yml .
+COPY yarn.lock .
+COPY gulpfile.js .
+COPY tsconfig.json .
+COPY packages/turndown ./packages/turndown
+COPY packages/turndown-plugin-gfm ./packages/turndown-plugin-gfm
+COPY packages/fork-htmlparser2 ./packages/fork-htmlparser2
+COPY packages/server/package*.json ./packages/server/
+COPY packages/fork-sax ./packages/fork-sax
+COPY packages/fork-uslug ./packages/fork-uslug
+COPY packages/htmlpack ./packages/htmlpack
+COPY packages/renderer ./packages/renderer
+COPY packages/tools ./packages/tools
+COPY packages/utils ./packages/utils
+COPY packages/lib ./packages/lib
+COPY packages/server ./packages/server
+
+# We don't want to build onenote-converter since it is not used by the server
+RUN sed --in-place '/onenote-converter/d' ./packages/lib/package.json
+
+# For some reason there's both a .yarn/cache and .yarn/berry/cache that are
+# being generated, and both have the same content. Not clear why it does this
+# but we can delete it anyway. We can delete the cache because we use
+# `nodeLinker: node-modules`. If we ever implement Zero Install, we'll need to
+# keep the cache.
+#
+# Note that `yarn install` ignores `NODE_ENV=production` and will install dev
+# dependencies too, but this is fine because we need them to build the app.
+
+RUN --mount=type=cache,target=/build/.yarn/cache --mount=type=cache,target=/build/.yarn/berry/cache\
+    BUILD_SEQUENCIAL=1 yarn config set cacheFolder /build/.yarn/cache \
+    && yarn install --inline-builds
+
+# =============================================================================
+# Final stage - we copy only the relevant files from the build stage and start
+# from a smaller base image.
+# =============================================================================
+
+FROM node:20-slim
+
+# Lazy version, https://github.com/tianon/gosu/blob/master/INSTALL.md
+COPY --from=tianon/gosu /gosu /usr/local/bin/
+COPY --chown=node:node --from=builder /build/packages /app
+COPY --from=builder /usr/bin/tini /usr/local/bin/tini
+# Entry point to check permissions and switch to node:node user 
+COPY --chown=node:node docker/bin/docker-entrypoint.sh /
+
+ENV NODE_ENV=production
+ENV RUNNING_IN_DOCKER=1
+ENV DATA_ROOT=/data
+ENV SRV_ROOT=/app/server
+ENV PM2_HOME=$DATA_ROOT/pm2
+ENV PATH=$PATH:$SRV_ROOT/node_modules/.bin
+
+EXPOSE ${APP_PORT}
+
+RUN chmod ugo+rx,go-w /docker-entrypoint.sh \
+    && mkdir -p $PM2_HOME \
+    && chown node:node -R $DATA_ROOT \
+    # In case custom -u UID:GID arg was specified, these directory should be writable for other users
+    && chmod og+w -R $DATA_ROOT \
+    && chmod og+w $SRV_ROOT
+
+# Use Tini to start Joplin Server:
+# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#handling-kernel-signals
+WORKDIR $SRV_ROOT
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["pm2-runtime", "--exp-backoff-restart-delay=1000", "dist/app.js"]
+
+# Build-time metadata
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+ARG BUILD_DATE
+ARG REVISION
+ARG VERSION
+ARG SOURCE
+LABEL org.opencontainers.image.created="$BUILD_DATE" \
+      org.opencontainers.image.title="Joplin Server" \
+      org.opencontainers.image.description="Docker image for Joplin Server" \
+      org.opencontainers.image.url="https://joplinapp.org/" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.source="$SOURCE" \
+      org.opencontainers.image.version="$VERSION"
