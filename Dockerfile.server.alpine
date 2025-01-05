@@ -1,0 +1,143 @@
+# =============================================================================
+# Build stage
+# =============================================================================
+
+FROM node:24-alpine AS builder
+
+RUN apk add --no-cache \
+    python3 py3-pip \
+    make g++ \
+    pixman-dev cairo-dev pango-dev pkgconfig;
+
+# Enables Yarn
+RUN corepack enable
+
+WORKDIR /build
+
+COPY .yarn/releases ./.yarn/releases
+COPY .yarn/patches ./.yarn/patches
+COPY package.json .
+COPY .yarnrc.yml .
+COPY yarn.lock .
+COPY gulpfile.js .
+COPY tsconfig.json .
+COPY packages/turndown ./packages/turndown
+COPY packages/turndown-plugin-gfm ./packages/turndown-plugin-gfm
+COPY packages/fork-htmlparser2 ./packages/fork-htmlparser2
+COPY packages/server/package*.json ./packages/server/
+COPY packages/fork-sax ./packages/fork-sax
+COPY packages/fork-uslug ./packages/fork-uslug
+COPY packages/htmlpack ./packages/htmlpack
+COPY packages/renderer ./packages/renderer
+COPY packages/tools ./packages/tools
+COPY packages/utils ./packages/utils
+COPY packages/lib ./packages/lib
+COPY packages/server ./packages/server
+
+# We don't want to build onenote-converter since it is not used by the server
+RUN sed --in-place '/onenote-converter/d' ./packages/lib/package.json
+
+# Joplin Server -- and the Joplin packages, when included with it -- are licensed under their own license.
+RUN sed --in-place 's/"license": "AGPL-3.0-or-later"/"license": "UNLICENSED"/' ./package.json ./packages/*/package.json
+
+# For some reason there's both a .yarn/cache and .yarn/berry/cache that are
+# being generated, and both have the same content. Not clear why it does this
+# but we can delete it anyway. We can delete the cache because we use
+# `nodeLinker: node-modules`. If we ever implement Zero Install, we'll need to
+# keep the cache.
+#
+# Note that `yarn install` ignores `NODE_ENV=production` and will install dev
+# dependencies too, but this is fine because we need them to build the app.
+
+RUN --mount=type=cache,target=/build/.yarn/cache --mount=type=cache,target=/build/.yarn/berry/cache\
+    BUILD_SEQUENCIAL=1 yarn config set cacheFolder /build/.yarn/cache \
+    && yarn install --inline-builds \
+    # Running "yarn workspaces focus" removes dev dependencies and allows building smaller images.
+    # For it to work, the "postinstall" step needs to be disabled, since dev dependencies are used
+    # during the postinstall-triggered build step.
+    && sed --in-place 's/"postinstall": ".*"/"postinstall": ""/' ./package.json ./packages/*/package.json \
+    && yarn workspaces focus --production --all
+
+# =============================================================================
+# Final stage - we copy only the relevant files from the build stage and start
+# from a smaller base image.
+# =============================================================================
+
+FROM node:24-alpine
+
+RUN apk add --no-cache \
+    shadow \
+    tini;
+
+# Lazy version, https://github.com/tianon/gosu/blob/master/INSTALL.md
+COPY --from=tianon/gosu /gosu /usr/local/bin/
+
+# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#non-root-user
+ARG user=node
+
+# Install PM2 and set home directory. Setting the PM2 data dir so modules/config persist regardless
+# of user home.
+RUN npm i -g pm2@5.4.3 && mkdir -p /opt/pm2 && chown -R $user:$user /opt/pm2
+ENV PM2_HOME=/opt/pm2
+
+USER $user
+
+COPY --chown=$user:$user --from=builder /build/node_modules /app/node_modules
+COPY --chown=node:node --from=builder /build/packages /app/packages
+
+#Verify PUID:PGID and file permissions
+COPY --chown=$user:$user docker/alpine-bin/docker-entrypoint.sh /
+
+
+# We download a specific version of the plugin to prevent pm2 from fetching the latest, since it may
+# not have been properly audited (that fact was used to spread malware at some point). Ref:
+# https://github.com/laurent22/joplin/issues/12754
+RUN pm2 install https://registry.npmjs.org/pm2-logrotate/-/pm2-logrotate-3.0.0.tgz \
+	&& pm2 set pm2-logrotate:max_size 100MB \
+	&& pm2 set pm2-logrotate:retain 5 \
+	&& pm2 set pm2-logrotate:compress true
+
+ARG LICENSE_REQUIRED="0"
+ENV LICENSE_REQUIRED=${LICENSE_REQUIRED}
+
+
+ENV NODE_ENV=production
+ENV RUNNING_IN_DOCKER=1
+ENV DATA_ROOT=/data
+ENV SRV_ROOT=/app/packages/server
+ENV PM2_HOME=$DATA_ROOT/pm2
+ENV PATH=$PATH:/app/node_modules/.bin
+
+EXPOSE ${APP_PORT}
+
+#Switch back to root to have full FS permissions
+# /docker-entrypoint.sh will switch app process to specified PUID:PGID
+USER root
+
+RUN chmod ugo+rx,go-w /docker-entrypoint.sh \
+    && mkdir -p $PM2_HOME \
+    && chown node:node -R $DATA_ROOT \
+    # In case custom -u UID:GID arg was specified, these directory should be writable for other users
+    && chmod og+w -R $DATA_ROOT \
+    && chmod og+w $SRV_ROOT
+
+# Use Tini to start Joplin Server:
+# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#handling-kernel-signals
+WORKDIR $SRV_ROOT
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["yarn", "start-prod"]
+
+# Build-time metadata
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+ARG BUILD_DATE
+ARG REVISION
+ARG VERSION
+ARG SOURCE
+LABEL org.opencontainers.image.created="$BUILD_DATE" \
+      org.opencontainers.image.title="Joplin Server" \
+      org.opencontainers.image.description="Docker image for Joplin Server" \
+      org.opencontainers.image.url="https://joplinapp.org/" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.source="$SOURCE" \
+      org.opencontainers.image.version="$VERSION"
