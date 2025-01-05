@@ -12,6 +12,53 @@ interface Argv {
 	addLatestTag?: boolean;
 }
 
+function parseArgv(): Argv {
+	return require('yargs')
+		.scriptName('yarn buildServerDocker')
+		.usage('$0 --repository OWNER/IMAGE [args]')
+		.option('r', {
+			alias: 'repository',
+			describe: 'Target image repository. Usually in format `OWNER/NAME`',
+			demandOption: true,
+			type: 'string',
+		})
+		.option('t', {
+			alias: 'tagName',
+			describe: 'Base image tag. Usually should be in format `server-v1.2.3` or `server-v1.2.3-beta`. The latest `server-v*` git tag will be used by default.',
+			type: 'string',
+		})
+		.option('l', {
+			alias: 'addLatestTag',
+			describe: 'Add `latest` tag even for pre-release images.',
+			type: 'boolean',
+			default: false,
+		})
+		.option('platform', {
+			describe: 'Comma separated list of target image platforms.',
+			type: 'string',
+			default: 'linux/amd64',
+		})
+		.option('source', {
+			describe: 'Source Git repository for the images.',
+			type: 'string',
+			default: 'https://github.com/laurent22/joplin.git',
+		})
+		.option('p', {
+			alias: 'pushImages',
+			describe: 'Publish images to target repository.',
+			type: 'boolean',
+			default: false,
+		})
+		.option('dryRun', {
+			alias: 'dryRun',
+			describe: 'Do not call docker, just show command instead.',
+			type: 'boolean',
+			default: false,
+		})
+		.help()
+		.argv as Argv;
+}
+
 export function getVersionFromTag(tagName: string, isPreRelease: boolean): string {
 	const s = tagName.split('-');
 	const mainVersion = s[1].replace(/^(v)/, '');
@@ -30,17 +77,16 @@ export function getIsPreRelease(_tagName: string): boolean {
 }
 
 async function main() {
-	const argv = require('yargs').argv as Argv;
+	const argv = parseArgv();
 	if (!argv.tagName) console.info('No `--tag-name` was specified. A latest git tag will be used instead.');
-	if (!argv.repository) throw new Error('--repository not provided');
 
-	const dryRun = !!argv.dryRun;
-	const addLatestTag = !!argv.addLatestTag;
-	const pushImages = !!argv.pushImages;
+	const dryRun = argv.dryRun;
+	const addLatestTag = argv.addLatestTag;
+	const pushImages = argv.pushImages;
 	const repository = argv.repository;
 	const tagName = argv.tagName || `server-${await execCommand('git describe --tags --match v*', { showStdout: false })}`;
-	const platform = argv.platform || 'linux/amd64';
-	const source = 'https://github.com/laurent22/joplin.git';
+	const platform = argv.platform;
+	const source = argv.source;
 
 	const isPreRelease = getIsPreRelease(tagName);
 	const imageVersion = getVersionFromTag(tagName, isPreRelease);
