@@ -107,7 +107,7 @@ async function main() {
 	const dockerTags: string[] = [];
 	const versionParts = imageVersion.split('.');
 	const patchVersionPart = versionParts[2].split('-')[0];
-	dockerTags.push(isPreRelease ? 'beta' : 'latest');
+	dockerTags.push(isPreRelease ? 'latest-beta' : 'latest');
 	dockerTags.push(versionParts[0] + (isPreRelease ? '-beta' : ''));
 	dockerTags.push(`${versionParts[0]}.${versionParts[1]}${isPreRelease ? '-beta' : ''}`);
 	dockerTags.push(`${versionParts[0]}.${versionParts[1]}.${patchVersionPart}${isPreRelease ? '-beta' : ''}`);
