@@ -7,6 +7,8 @@ interface Argv {
 	pushImages?: boolean;
 	repository?: string;
 	tagName?: string;
+	platform?: string;
+	source?: string;
 }
 
 export function getVersionFromTag(tagName: string, isPreRelease: boolean): string {
@@ -35,6 +37,7 @@ async function main() {
 	const pushImages = !!argv.pushImages;
 	const repository = argv.repository;
 	const tagName = argv.tagName || `server-${await execCommand('git describe --tags --match v*', { showStdout: false })}`;
+	const platform = argv.platform || 'linux/amd64';
 	const source = 'https://github.com/laurent22/joplin.git';
 
 	const isPreRelease = getIsPreRelease(tagName);
@@ -46,14 +49,20 @@ async function main() {
 	} catch (error) {
 		console.info('Could not get git commit: metadata revision field will be empty');
 	}
-	const buildArgs = `--build-arg BUILD_DATE="${buildDate}" --build-arg REVISION="${revision}" --build-arg VERSION="${imageVersion}" --build-arg SOURCE="${source}"`;
+
+	const buildArgs = [];
+	buildArgs.push(`BUILD_DATE="${buildDate}"`);
+	buildArgs.push(`REVISION="${revision}"`);
+	buildArgs.push(`VERSION="${imageVersion}"`);
+	buildArgs.push(`SOURCE="${source}"`);
+
 	const dockerTags: string[] = [];
-	const versionPart = imageVersion.split('.');
-	const patchVersionPart = versionPart[2].split('-')[0];
+	const versionParts = imageVersion.split('.');
+	const patchVersionPart = versionParts[2].split('-')[0];
 	dockerTags.push(isPreRelease ? 'beta' : 'latest');
-	dockerTags.push(versionPart[0] + (isPreRelease ? '-beta' : ''));
-	dockerTags.push(`${versionPart[0]}.${versionPart[1]}${isPreRelease ? '-beta' : ''}`);
-	dockerTags.push(`${versionPart[0]}.${versionPart[1]}.${patchVersionPart}${isPreRelease ? '-beta' : ''}`);
+	dockerTags.push(versionParts[0] + (isPreRelease ? '-beta' : ''));
+	dockerTags.push(`${versionParts[0]}.${versionParts[1]}${isPreRelease ? '-beta' : ''}`);
+	dockerTags.push(`${versionParts[0]}.${versionParts[1]}.${patchVersionPart}${isPreRelease ? '-beta' : ''}`);
 	if (dockerTags.indexOf(imageVersion) < 0) {
 		dockerTags.push(imageVersion);
 	}
@@ -62,24 +71,32 @@ async function main() {
 	process.chdir(rootDir);
 	console.info(`Running from: ${process.cwd()}`);
 
+	console.info('repository:', repository);
 	console.info('tagName:', tagName);
+	console.info('platform:', platform);
 	console.info('pushImages:', pushImages);
 	console.info('imageVersion:', imageVersion);
 	console.info('isPreRelease:', isPreRelease);
 	console.info('Docker tags:', dockerTags.join(', '));
 
-	const dockerCommand = `docker build --progress=plain -t "${repository}:${imageVersion}" ${buildArgs} -f Dockerfile.server .`;
+	const cliArgs = ['--progress=plain'];
+	cliArgs.push(`--platform ${platform}`);
+	cliArgs.push(...dockerTags.map(tag => `--tag "${repository}:${tag}"`));
+	cliArgs.push(...buildArgs.map(arg => `--build-arg ${arg}`));
+	if (pushImages) {
+		cliArgs.push('--push');
+	}
+	cliArgs.push('-f Dockerfile.server');
+	cliArgs.push('.');
+
+	const dockerCommand = `docker buildx build ${cliArgs.join(' ')}`;
+
+	console.info('exec:', dockerCommand);
 	if (dryRun) {
-		console.info(dockerCommand);
 		return;
 	}
 
 	await execCommand(dockerCommand);
-
-	for (const tag of dockerTags) {
-		await execCommand(`docker tag "${repository}:${imageVersion}" "${repository}:${tag}"`);
-		if (pushImages) await execCommand(`docker push ${repository}:${tag}`);
-	}
 }
 
 if (require.main === module) {
