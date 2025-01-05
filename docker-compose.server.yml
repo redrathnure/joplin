@@ -11,6 +11,8 @@
 # APP_PORT: The local port on which the Docker container will listen. 
 #	- This would typically be mapped to port to 443 (TLS) with a reverse proxy.
 #	- If Joplin Server does not need to be accessible over the internet, the port can be mapped to 22300.
+# PUID: an optional parameter to specify UID for internal user. `1000` is default value. Right now may be used for beta images only!
+# PGID: an optional parameter to specify UID for internal user. `1000` is default value. Right now may be used for beta images only!
 #
 # DataBase configuration:
 # 
@@ -58,3 +60,5 @@ services:
             - POSTGRES_USER=${POSTGRES_USER:-joplin}
             - POSTGRES_PORT=${POSTGRES_PORT:-5432}
             - POSTGRES_HOST=${POSTGRES_HOST:-db}
+            - PUID=${PUID:-1000}
+            - PGID=${PGID:-1000}
