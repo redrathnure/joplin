@@ -9,6 +9,7 @@ interface Argv {
 	tagName?: string;
 	platform?: string;
 	source?: string;
+	addLatestTag?: boolean;
 }
 
 export function getVersionFromTag(tagName: string, isPreRelease: boolean): string {
@@ -34,6 +35,7 @@ async function main() {
 	if (!argv.repository) throw new Error('--repository not provided');
 
 	const dryRun = !!argv.dryRun;
+	const addLatestTag = !!argv.addLatestTag;
 	const pushImages = !!argv.pushImages;
 	const repository = argv.repository;
 	const tagName = argv.tagName || `server-${await execCommand('git describe --tags --match v*', { showStdout: false })}`;
@@ -65,6 +67,9 @@ async function main() {
 	dockerTags.push(`${versionParts[0]}.${versionParts[1]}.${patchVersionPart}${isPreRelease ? '-beta' : ''}`);
 	if (dockerTags.indexOf(imageVersion) < 0) {
 		dockerTags.push(imageVersion);
+	}
+	if (addLatestTag && dockerTags.indexOf('latest') < 0) {
+		dockerTags.push('latest');
 	}
 
 
