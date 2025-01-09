@@ -7,6 +7,9 @@ FROM node:18 AS builder
 RUN apt-get update \
     && apt-get install -y \
     python3 tini \
+    # needed for node-canvas for ARM32 platform.
+    # See also https://github.com/Automattic/node-canvas/wiki/Installation:-Ubuntu-and-other-Debian-based-systems  
+    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Enables Yarn
