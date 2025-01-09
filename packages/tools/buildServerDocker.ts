@@ -34,7 +34,7 @@ function parseArgv(): Argv {
 			default: false,
 		})
 		.option('platform', {
-			describe: 'Comma separated list of target image platforms.',
+			describe: 'Comma separated list of target image platforms. E.g. `linux/amd64` or `linux/amd64,linux/arm64`',
 			type: 'string',
 			default: 'linux/amd64',
 		})
