@@ -4,14 +4,18 @@
 
 FROM node:20 AS builder
 
-RUN apt-get update \
-    && apt-get install -y \
-    python3 tini \
-    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 # Enables Yarn
 RUN corepack enable
+
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
+    && apt-get install -y \
+        python3 tini \
+        libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
 
 WORKDIR /build
 
