@@ -101,17 +101,3 @@ WORKDIR $SRV_ROOT
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["pm2-runtime", "--exp-backoff-restart-delay=1000", "dist/app.js"]
-
-# Build-time metadata
-# https://github.com/opencontainers/image-spec/blob/master/annotations.md
-ARG BUILD_DATE
-ARG REVISION
-ARG VERSION
-ARG SOURCE
-LABEL org.opencontainers.image.created="$BUILD_DATE" \
-      org.opencontainers.image.title="Joplin Server" \
-      org.opencontainers.image.description="Docker image for Joplin Server" \
-      org.opencontainers.image.url="https://joplinapp.org/" \
-      org.opencontainers.image.revision="$REVISION" \
-      org.opencontainers.image.source="$SOURCE" \
-      org.opencontainers.image.version="$VERSION"
