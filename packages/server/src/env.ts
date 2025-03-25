@@ -168,6 +168,8 @@ const defaultEnvValues: EnvVariables = {
 	LDAP_2_BIND_PW: '', // used for user search - leave empty if ldap server allows anonymous bind
 	LDAP_2_TLS_CA_FILE: '', // used for self-signed certificate with ldaps - leave empty if using ldap or server uses CA-issued certificate
 
+	LOGS_DIR: '',
+	TEMP_DIR: '',
 	// ==================================================
 	// SAML configuration
 	// ==================================================
@@ -287,6 +289,8 @@ export interface EnvVariables {
 	LDAP_2_BIND_PW: string;
 	LDAP_2_TLS_CA_FILE: string;
 
+	LOGS_DIR: string;
+	TEMP_DIR: string;
 	SAML_ENABLED: boolean;
 	SAML_IDP_CONFIG_FILE: string;
 	SAML_SP_CONFIG_FILE: string;

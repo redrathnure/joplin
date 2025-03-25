@@ -29,10 +29,10 @@ if [ "$PUID" != "$ORIGIN_NODE_UID" -o "$PGID" != "$ORIGIN_NODE_GID" ]; then
 
         # fix data dirs permissions
         printf "Adjusting file permissions for the new node UID:GID...\n"
-        # Changing $SRV_ROOT recursivelly takes too long. The same may be about $DATA_ROOT
-        chown node:node $SRV_ROOT
         chown node:node $DATA_ROOT
         chown node:node $DATA_ROOT/*
+        chown node:node -R $LOGS_DIR
+        chown node:node -R $TEMP_DIR
         chown node:node -R $PM2_HOME
     else
         printf "WARNING: PUID/PGID envs were specified together with custom -u UID:GID argument.\n"

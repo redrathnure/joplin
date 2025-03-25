@@ -84,16 +84,22 @@ ENV RUNNING_IN_DOCKER=1
 ENV DATA_ROOT=/data
 ENV SRV_ROOT=/app/server
 ENV PM2_HOME=$DATA_ROOT/pm2
+ENV LOGS_DIR=$DATA_ROOT/logs
+ENV TEMP_DIR=$DATA_ROOT/temp
+
 ENV PATH=$PATH:$SRV_ROOT/node_modules/.bin
 
 EXPOSE ${APP_PORT}
 
 RUN chmod ugo+rx,go-w /docker-entrypoint.sh \
     && mkdir -p $PM2_HOME \
+    && mkdir -p $LOGS_DIR \
+    && mkdir -p $TEMP_DIR \
     && chown node:node -R $DATA_ROOT \
     # In case custom -u UID:GID arg was specified, these directory should be writable for other users
-    && chmod og+w -R $DATA_ROOT \
-    && chmod og+w $SRV_ROOT
+    && chmod og+w $DATA_ROOT \
+    && chmod og+w -R $LOGS_DIR \
+    && chmod og+w -R $TEMP_DIR
 
 # Use Tini to start Joplin Server:
 # https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#handling-kernel-signals
