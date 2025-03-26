@@ -28,6 +28,8 @@
 # DB_CLIENT=sqlite3
 # SQLITE_DATABASE: location of local DB file. A `/data/db.sqlite` value would be a good chose here.
 #
+# LOGS_DIR: location of joplin logs. By default it has `/data/logs` value.
+# TEMP_DIR: location of joplin temp files. By default it has `/data/temp` value.
 
 
 networks:
