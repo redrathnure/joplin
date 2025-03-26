@@ -6,7 +6,8 @@ FROM node:20-alpine AS builder
 
 
 # Enables Yarn
-RUN corepack enable
+RUN --mount=type=cache,target=/root/.cache/node/corepack \
+    corepack enable
 
 RUN apk add --no-cache \
         python3 py3-pip \
@@ -49,9 +50,10 @@ RUN sed --in-place '/onenote-converter/d' ./packages/lib/package.json
 # Note that `yarn install` ignores `NODE_ENV=production` and will install dev
 # dependencies too, but this is fine because we need them to build the app.
 
-RUN --mount=type=cache,target=/build/.yarn/cache --mount=type=cache,target=/build/.yarn/berry/cache\
-    BUILD_SEQUENCIAL=1 yarn config set cacheFolder /build/.yarn/cache \
-    && yarn install --inline-builds
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
+    --mount=type=cache,target=/root/.yarn/berry/cache \
+    --mount=type=cache,target=/root/.npm \
+    BUILD_SEQUENCIAL=1 yarn install --inline-builds
 
 # =============================================================================
 # Final stage - we copy only the relevant files from the build stage and start

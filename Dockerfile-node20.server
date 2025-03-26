@@ -5,13 +5,14 @@
 FROM node:20 AS builder
 
 # Enables Yarn
-RUN corepack enable
-
-RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/root/.cache/node/corepack \
+    corepack enable
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
+    && apt-get update \
     && apt-get install -y \
         python3 tini \
         # needed for node-canvas for ARM32 platform.
@@ -54,9 +55,10 @@ RUN sed --in-place '/onenote-converter/d' ./packages/lib/package.json
 # Note that `yarn install` ignores `NODE_ENV=production` and will install dev
 # dependencies too, but this is fine because we need them to build the app.
 
-RUN --mount=type=cache,target=/build/.yarn/cache --mount=type=cache,target=/build/.yarn/berry/cache\
-    BUILD_SEQUENCIAL=1 yarn config set cacheFolder /build/.yarn/cache \
-    && yarn install --inline-builds
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
+    --mount=type=cache,target=/root/.yarn/berry/cache \
+    --mount=type=cache,target=/root/.npm \
+    BUILD_SEQUENCIAL=1 yarn install --inline-builds
 
 # =============================================================================
 # Final stage - we copy only the relevant files from the build stage and start
