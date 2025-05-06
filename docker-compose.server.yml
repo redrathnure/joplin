@@ -55,7 +55,7 @@ services:
             - POSTGRES_USER=${POSTGRES_USER:-joplin}
             - POSTGRES_DB=${POSTGRES_DATABASE:-joplin}
     app:
-        image: joplin/server:latest
+        image: jghcr.io/redrathnure/joplin:latest
         profiles:
             - full
             - server

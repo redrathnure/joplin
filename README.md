@@ -1,6 +1,6 @@
 # Fork Info
 
-A staging repository for Joplin improvements. A following changes were done here:
+~~A staging repository for Joplin improvements~~. A repository with improvement for a Joplin project which author cannot merge to origin repo. Mostly arount security concerns for server images. A following changes were done here:
 
 1. Docker image is run with node:node user(default user for official nodejs images). By default it's `1000:1000` however it may be adjusted using `PUID` and `PGID` args.
 3. It's possible to run contained with `-u UID:GID` params. Please note it is **not** the same as `PUID:PGID` args and it is **not** recommended at all (see description below)
@@ -8,6 +8,7 @@ A staging repository for Joplin improvements. A following changes were done here
 4.1. Caching mount points to speed up image build/rebuild process
 4.2. It's possible to build multiplatform images (ARM images in TODO list)
 5. A few additional configuration properties. Mostly for better control of stored data (see description below)
+6. Docker images will be published only to [ghcr.io/redrathnure/joplin](https://github.com/redrathnure/joplin/pkgs/container/joplin) repository
 
 ## Some of the Issues Addressed
 
@@ -28,7 +29,7 @@ So a docker compose may be built with following snippet:
 ```
 services:
   joplin:
-    image: redrathnure/joplin:3.2-beta
+    image: ghcr.io/redrathnure/joplin:3.3-beta
     ...
     environment:
       ...
@@ -58,16 +59,20 @@ A new version uses Docker BuildX toolset to produce images. There are some addit
 
 ### Image Tags/Versions
 
-Original repo [produces Docker images](https://hub.docker.com/r/joplin/server) with `beta` tags prefixes, seems the authors decided the server isn't stable enough for release. So, please use `latest` or `latest-beta` tags with caution.
+Unfortunately [laurent22 from Joplin decided to kill all custom repositories from DockerHub](https://github.com/laurent22/joplin/pull/11582#issuecomment-2802490317), pehaps he has the special alternative understanding of open source... and do not spend a time to address security concerns (e.g. see history of the https://github.com/laurent22/joplin/pull/11581 and related PRs). 
+
+Anyway, the custom images will be published to the [ghcr.io/redrathnure/joplin](https://github.com/redrathnure/joplin/pkgs/container/joplin) repo only. You need just replace `image: redrathnure/joplin` or `image: laurent22/joplin` by `image: ghcr.io/redrathnure/joplin` in the compose files.
+
+This repository applies changes on top of original code and release tags, this is why all custom images have `-beta` suffixes.
 
 Available tags:
 
 * `latest` - latest published image
 * `latest-beta` - latest pre release image. For now the same as `latest` one.
-* `1-beta`
-* `1.2-beta`
-* `1.2.3-beta` 
-* `1.2.3-beta.13.g15da68da8` where the `13.g15da68da8` part points to the git commit where images was built.
+* `3-beta`
+* `3.3-beta`
+* `3.3.12-beta` 
+* `3.3.12-beta.13.g15da68da8` where the `13.g15da68da8` part points to the git commit where images was built.
 * `*-node18` - node.js 18.x based images. The same as images without `-node18` suffix.
 * `*-node20` - node.js 20.x based images. (!) Have not tested yet!
 * `*-alpine` - Linux Alpine based images (smaller size but may have compatibility issues). (!) Have not tested yet!
