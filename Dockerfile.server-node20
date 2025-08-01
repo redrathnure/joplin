@@ -22,7 +22,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 WORKDIR /build
 
-COPY .yarn/plugins ./.yarn/plugins
 COPY .yarn/releases ./.yarn/releases
 COPY .yarn/patches ./.yarn/patches
 COPY package.json .
