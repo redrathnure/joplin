@@ -74,14 +74,6 @@ COPY --from=builder /usr/bin/tini /usr/local/bin/tini
 # Entry point to check permissions and switch to node:node user 
 COPY --chown=node:node docker/bin/docker-entrypoint.sh /
 
-# We download a specific version of the plugin to prevent pm2 from fetching the latest, since it may
-# not have been properly audited (that fact was used to spread malware at some point). Ref:
-# https://github.com/laurent22/joplin/issues/12754
-RUN pm2 install https://registry.npmjs.org/pm2-logrotate/-/pm2-logrotate-3.0.0.tgz \
-	&& pm2 set pm2-logrotate:max_size 100MB \
-	&& pm2 set pm2-logrotate:retain 5 \
-	&& pm2 set pm2-logrotate:compress true
-
 ENV NODE_ENV=production
 ENV RUNNING_IN_DOCKER=1
 ENV DATA_ROOT=/data
@@ -91,6 +83,17 @@ ENV LOGS_DIR=$DATA_ROOT/logs
 ENV TEMP_DIR=$DATA_ROOT/temp
 
 ENV PATH=$PATH:$SRV_ROOT/node_modules/.bin
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm i -g pm2@5.4.3
+
+# We download a specific version of the plugin to prevent pm2 from fetching the latest, since it may
+# not have been properly audited (that fact was used to spread malware at some point). Ref:
+# https://github.com/laurent22/joplin/issues/12754
+RUN pm2 install https://registry.npmjs.org/pm2-logrotate/-/pm2-logrotate-3.0.0.tgz \
+	&& pm2 set pm2-logrotate:max_size 100MB \
+	&& pm2 set pm2-logrotate:retain 5 \
+	&& pm2 set pm2-logrotate:compress true
 
 EXPOSE ${APP_PORT}
 
