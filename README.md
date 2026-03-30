@@ -1,6 +1,6 @@
 # Fork Info
 
-~~A staging repository for Joplin improvements~~. A repository with improvement for a Joplin project which author cannot merge to origin repo. Mostly arount security concerns for server images. A following changes were done here:
+~~A staging repository for Joplin improvements~~. A repository with improvement for a Joplin project which author cannot merge to origin repo. Mostly around security concerns for server images. A following changes were done here:
 
 1. Docker image is run with node:node user(default user for official nodejs images). By default it's `1000:1000` however it may be adjusted using `PUID` and `PGID` args.
 3. It's possible to run contained with `-u UID:GID` params. Please note it is **not** the same as `PUID:PGID` args and it is **not** recommended at all (see description below)
@@ -73,8 +73,6 @@ Available tags:
 * `3.3-beta`
 * `3.3.12-beta` 
 * `3.3.12-beta.13.g15da68da8` where the `13.g15da68da8` part points to the git commit where images was built.
-* `*-node18` - node.js 18.x based images. The same as images without `-node18` suffix.
-* `*-node20` - node.js 20.x based images. (!) Have not tested yet!
 * `*-alpine` - Linux Alpine based images (smaller size but may have compatibility issues). (!) Have not tested yet!
 
 ### Image Env
