@@ -4,13 +4,15 @@
 
 FROM node:24-alpine AS builder
 
+# Enables Yarn
+RUN corepack enable
+
+
 RUN apk add --no-cache \
     python3 py3-pip \
     make g++ \
     pixman-dev cairo-dev pango-dev pkgconfig;
 
-# Enables Yarn
-RUN corepack enable
 
 WORKDIR /build
 
