@@ -68,8 +68,8 @@ RUN --mount=type=cache,target=/build/.yarn/cache --mount=type=cache,target=/buil
 
 FROM node:24-slim
 
-ARG user=joplin
-RUN useradd --create-home --shell /bin/bash $user
+# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md#non-root-user
+ARG user=node
 
 # Install PM2 and set home directory. Setting the PM2 data dir so modules/config persist regardless
 # of user home.
